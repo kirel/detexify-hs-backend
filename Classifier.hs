@@ -56,6 +56,4 @@ trainClassifier (Classifier t) sample = atomically $ update t (sample:)
 classifyWithClassifier :: Sample s => Classifier s -> s -> IO [Hit s]
 classifyWithClassifier (Classifier t) sample = do
   samples <- atomically $ readTVar t
-  -- work with samples in a pure way here!
-  let Just ident = identifier (head samples) -- 
-  return [Hit 0.0 sample]
+  return $ findKNearestNeighbors 50 sample samples
