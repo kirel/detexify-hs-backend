@@ -4,6 +4,8 @@ module Strokes
   add, sub, dot, scalar, norm, euclideanDistance,
   ) where
 
+import DTW
+
 -- data types
 type Point = (Double, Double)
 type Stroke = [Point]
