@@ -2,7 +2,8 @@ module Classifier
   (
   newClassifier,
   trainClassifier,
-  classifyWithClassifier
+  classifyWithClassifier,
+  Sample(..)
   ) where
 
 import Control.Monad

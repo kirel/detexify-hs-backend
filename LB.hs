@@ -1,13 +1,14 @@
 module LB
   (
-  hullSeries, dtwlb
+  hullSeries, dtwlb,
+  ConvexHull
   ) where
 
 import Data.Maybe
 import Data.List (sortBy, transpose, nub)
 import Strokes
 
-data ConvexHull = ConvexHull [Point] deriving (Show)
+newtype ConvexHull = ConvexHull [Point] deriving (Show)
 
 -- lower bounding
 
