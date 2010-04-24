@@ -32,7 +32,9 @@ instance Eq (Hit s) where
 instance Ord (Hit s) where
   compare h o = compare (score h) (score o)
   
-data Classifier a = Classifier Int (TVar [a]) -- Classifier holds Training Data
+data Classifier a = Classifier Int (TVar (Map String [a])) -- Classifier holds Training Data
+-- TODO use a different Datastructure than []
+-- It should limit on a per sample basis
 
 type Score = Double
 type Results = [(String, Score)]
@@ -58,16 +60,28 @@ alterMin next (Just before) = Just $ min before next
 results :: Sample s => [Hit s] -> Results
 results hits = Data.Map.toList $ foldl step Data.Map.empty hits where
   step results hit = alter (alterMin $ score hit) (fromJust $ identifier $ sample hit) results
+  
+-- insert and accumulate samples
+insertWithLimit :: Sample s => Int -> s -> Map String [s] -> Map String [s]
+insertWithLimit limit sample m = alter alterLim (fromJust $ identifier sample) m where
+  alterLim Nothing = Just [sample]
+  alterLim (Just l) | length l < limit = Just (sample:l)
+                    | otherwise = Just (sample:(init l))
 
 -- classifier interface
 newClassifier :: Int -> IO (Classifier s)
-newClassifier k = atomically $ liftM (Classifier k) (newTVar [])
+newClassifier k = atomically $ liftM (Classifier k) (newTVar Data.Map.empty)
 
 trainClassifier :: Sample s => Classifier s -> s -> IO ()
 trainClassifier _ sample | identifier sample == Nothing = error "Can only train samples of known classes."
-trainClassifier (Classifier _ t) sample = atomically $ Classifier.update t (sample:)
+trainClassifier (Classifier _ t) sample = atomically $ Classifier.update t (insertWithLimit 50 sample)
+
+getSamples :: Sample s => Classifier s -> IO [s]
+getSamples (Classifier k t) = do
+  m <- atomically $ readTVar t
+  return $ fold (++) [] m
 
 classifyWithClassifier :: Sample s => Classifier s -> s -> IO Results
-classifyWithClassifier (Classifier k t) sample = do
-  samples <- atomically $ readTVar t
+classifyWithClassifier c@(Classifier k t) sample = do
+  samples <- getSamples c
   return $ results $ findKNearestNeighbors k sample samples
