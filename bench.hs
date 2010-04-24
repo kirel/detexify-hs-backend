@@ -61,7 +61,7 @@ strokesize = 30
 num = 20000
 stroke = take strokesize $ (randomStroke 0)
 strokes = take num $ (map ((take strokesize) . randomStroke) [1..])
-ids = cycle $ map (:[]) ['a'..'z']
+ids = cycle $ map show [1..1000]
 
 main = do
   c <- newClassifier cK
