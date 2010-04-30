@@ -58,8 +58,8 @@ randomStroke = (strokeFromList . randoms . mkStdGen)
 
 cK = 10
 strokesize = 30
-num = 1000
-stroke = take strokesize $ (randomStroke 0)
+num = 20000
+stroke = take strokesize $ (randomStroke 1)
 strokes = take num $ (map ((take strokesize) . randomStroke) [1..])
 ids = cycle $ map show [1..1000]
 

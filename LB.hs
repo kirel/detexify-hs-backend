@@ -63,24 +63,37 @@ hullSeries width list = map grahamConvexHull $ shiftedSeries list width
 pairs :: [a] -> [(a,a)]
 pairs list = zip list (tail list)
 
+minimumDistancePoint :: Point -> (Point, Point) -> Point
+minimumDistancePoint point (l1, l2) = nearest where
+                      param = ((point `sub` l1) `dot` (l2 `sub` l1)) / ((euclideanDistance l1 l2)**2)
+                      nearest = case param of
+                        u | u <= 0 -> l1
+                          | u >= 1 -> l2
+                          | otherwise -> l1 `add` (u `scalar` (l2 `sub` l1))
+                          
 pointLineSegmentDistance :: Point -> (Point, Point) -> Double
 pointLineSegmentDistance point (l1, l2) = euclideanDistance point nearest where
-                    param = ((point `sub` l1) `dot` (l2 `sub` l1)) / ((euclideanDistance l1 l2)**2)
-                    nearest = case param of
-                      u | u <= 0 -> l1
-                        | u >= 1 -> l2
-                        | otherwise -> l1 `add` (u `scalar` (l2 `sub` l1))
+                          nearest = minimumDistancePoint point (l1, l2)
 
 -- relevantLines may be empty if point lies inside the hull
 minimumOrZero [] = 0.0
 minimumOrZero l = minimum l
 
+removeRepeating l = foldl' step [] l where
+  step [] n = [n]
+  step l@(e:es) n | e == n = l
+                  | otherwise = n:l
+
+-- FIXME This is the function that needs optimization!
 pointHullDistance :: Point -> ConvexHull -> Double
 pointHullDistance point (ConvexHull []) = error "Empty Hull!?"
 pointHullDistance point (ConvexHull [other]) = euclideanDistance point other
-pointHullDistance point (ConvexHull hull) = minimumOrZero $ map (pointLineSegmentDistance point) relevantLines where
-                                relevantLines = filter predicate $ take (length hull) $ pairs $ cycle hull where
-                                  predicate (l1, l2) = concave l1 l2 point
+-- pointHullDistance point (ConvexHull hull) = minimumOrZero $ map (pointLineSegmentDistance point) relevantLines where
+pointHullDistance point (ConvexHull hull) =
+    minimumOrZero $
+    map ((euclideanDistance point) . (minimumDistancePoint point)) relevantLines where
+      relevantLines = filter predicate $ take (length hull) $ pairs $ cycle hull where
+        predicate (l1, l2) = concave l1 l2 point
 
 -- Stroke -> Hulls -> Double
 dtwlb :: Stroke -> [ConvexHull] -> Double
