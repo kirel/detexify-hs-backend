@@ -9,6 +9,7 @@ module Classifier
 import Control.Monad
 import Control.Concurrent.STM
 import Data.Heap
+import Data.List (foldl')
 import Data.Map
 import Data.Maybe
 
@@ -45,9 +46,9 @@ update var f = readTVar var >>= (writeTVar var) . f
 
 -- classifier logic
 findKNearestNeighbors :: Sample s => Int -> s -> [s] -> [Hit s]
-findKNearestNeighbors k unknown known = Data.Heap.toList $ foldl step (Data.Heap.empty :: MaxHeap (Hit s)) known where
+findKNearestNeighbors k unknown known = Data.Heap.toList $ foldl' step (Data.Heap.empty :: MaxHeap (Hit s)) known where
   step heap next | Data.Heap.size heap < k = Data.Heap.insert (Hit dist next) heap
-                 | (lb < limit) && (dist < limit) = Data.Heap.insert (Hit dist next) $ fromJust $ viewTail heap
+                 | lb < limit && dist < limit = Data.Heap.insert (Hit dist next) $ fromJust $ viewTail heap
                  | otherwise = heap where
                       lb = distancelb unknown next
                       dist = distance unknown next
@@ -74,7 +75,7 @@ newClassifier k = atomically $ liftM (Classifier k) (newTVar Data.Map.empty)
 
 trainClassifier :: Sample s => Classifier s -> s -> IO ()
 trainClassifier _ sample | identifier sample == Nothing = error "Can only train samples of known classes."
-trainClassifier (Classifier _ t) sample = atomically $ Classifier.update t (insertWithLimit 50 sample)
+trainClassifier (Classifier _ t) sample = atomically $ Classifier.update t (insertWithLimit 20 sample)
 
 getSamples :: Sample s => Classifier s -> IO [s]
 getSamples (Classifier k t) = do

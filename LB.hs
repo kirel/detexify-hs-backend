@@ -5,7 +5,7 @@ module LB
   ) where
 
 import Data.Maybe
-import Data.List (sortBy, transpose, nub)
+import Data.List (sortBy, transpose, nub, foldl')
 import Strokes
 
 newtype ConvexHull = ConvexHull [Point] deriving (Show)
