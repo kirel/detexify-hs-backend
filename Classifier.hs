@@ -73,6 +73,7 @@ insertWithLimit limit sample m = alter alterLim (fromJust $ identifier sample) m
 newClassifier :: Int -> IO (Classifier s)
 newClassifier k = atomically $ liftM (Classifier k) (newTVar Data.Map.empty)
 
+-- FIXME sample limit is hardcoded here
 trainClassifier :: Sample s => Classifier s -> s -> IO ()
 trainClassifier _ sample | identifier sample == Nothing = error "Can only train samples of known classes."
 trainClassifier (Classifier _ t) sample = atomically $ Classifier.update t (insertWithLimit 20 sample)

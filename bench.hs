@@ -56,7 +56,7 @@ randomStroke = (strokeFromList . randoms . mkStdGen)
 --   stop <- getPOSIXTime
 --   print $ stop - start
 
-cK = 10
+cK = 100
 strokesize = 30
 num = 20000
 stroke = take strokesize $ (randomStroke 1)
