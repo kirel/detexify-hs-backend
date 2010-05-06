@@ -3,6 +3,7 @@ module DTW where
 import Data.Array
 
 -- using Array (Int,Int) Double as matrix
+-- TODO check dimensions
 dtw :: Eq a => ( a -> a -> Double ) -> Int -> [a] -> [a] -> Double
 dtw measure w s o = a!(n,m) where
   n = length s

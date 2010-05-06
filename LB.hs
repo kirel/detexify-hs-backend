@@ -1,6 +1,6 @@
 module LB
   (
-  hullSeries, dtwlb,
+  hullSeries, dtwlb, naivedtw,
   ConvexHull
   ) where
 
@@ -13,12 +13,12 @@ newtype ConvexHull = ConvexHull [Point] deriving (Show)
 -- lower bounding
 
 convex :: Point -> Point -> Point -> Bool
-convex (vx, vy) (wx, wy) (ux, uy) = ( wx - vx ) * ( uy - vy ) - ( wy - vy ) * ( ux - vx ) > 0
+convex (Point (vx, vy)) (Point (wx, wy)) (Point (ux, uy)) = ( wx - vx ) * ( uy - vy ) - ( wy - vy ) * ( ux - vx ) > 0
 concave :: Point -> Point -> Point -> Bool
 concave v w u = not (convex v w u)
 
-angle (0, 0) = 1/0 -- Infinity
-angle (x, y) = x/y
+angle (Point (0, 0)) = 1/0 -- Infinity
+angle (Point (x, y)) = x/y
 
 -- ccw trajectory of the convex hull
 grahamConvexHull :: Points -> ConvexHull
@@ -26,8 +26,8 @@ grahamConvexHull :: Points -> ConvexHull
 grahamConvexHull points | length points < 4 = ConvexHull $ nub points
 grahamConvexHull points = ConvexHull $ reverse $ nub $ foldl step [] sortedPoints where
                         minP = foldl1 st points where -- checked!
-                          st (minPx, minPy) (px, py) | py < minPy || (py == minPy && px < minPx) = (px, py)
-                                                     | otherwise = (minPx, minPy)
+                          st (Point (minPx, minPy)) (Point (px, py)) | py < minPy || (py == minPy && px < minPx) = Point (px, py)
+                                                     | otherwise = Point (minPx, minPy)
                         comp v w = compare (negate $ angle v, norm v) (negate $ angle w, norm w)
                         sortedPoints = map (`add` minP) $ sortBy comp $ map (`sub` minP) points
                         step :: Points -> Point -> Points
@@ -98,3 +98,11 @@ pointHullDistance point (ConvexHull hull) =
 -- Stroke -> Hulls -> Double
 dtwlb :: Stroke -> [ConvexHull] -> Double
 dtwlb stroke hulls = foldl (+) 0 $ zipWith pointHullDistance stroke hulls
+
+for = flip map
+
+naivedtw :: Eq a => ( a -> a -> Double ) -> Int -> [a] -> [a] -> Double
+naivedtw measure w s o = foldl1 (+) $ for (zip s o') $ \(p, ps) ->
+  minimum $ for ps $ \p' -> measure p p' 
+  where
+    o' = shiftedSeries o w

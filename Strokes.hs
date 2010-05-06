@@ -1,23 +1,23 @@
 module Strokes
   (
-  Point, Stroke, Strokes, Points,
+  Point(..), Stroke, Strokes, Points,
   add, sub, dot, scalar, norm,
   euclideanDistance, manhattanDistance
   ) where
 
 -- data types
-type Point = (Double, Double)
+newtype Point = Point (Double, Double) deriving (Show, Eq)
 type Stroke = [Point]
 type Strokes = [Stroke]
-type Points = [Point]
-
+type Points = [Point]  
+  
 -- elementwise = zipWith for Points
 elementwise :: (Double -> Double) -> Point -> Point
-elementwise f (x,y) = (f x, f y)
+elementwise f (Point (x,y)) = Point (f x, f y)
 elementwise2 :: (Double -> Double -> Double) -> Point -> Point -> Point
-elementwise2 f (x,y) (v,w) = (f x v, f y w)
+elementwise2 f (Point (x,y)) (Point (v,w)) = Point (f x v, f y w)
 accumulate :: (Double -> Double -> Double) -> Point -> Double
-accumulate f (x,y) = f x y
+accumulate f (Point (x,y)) = f x y
 
 -- Vector operations
 add :: Point -> Point -> Point

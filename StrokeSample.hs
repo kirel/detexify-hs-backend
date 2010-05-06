@@ -1,6 +1,7 @@
 module StrokeSample
   (
-  newStrokeSample
+  newStrokeSample,
+  StrokeSample()
   ) where
 
 import Strokes

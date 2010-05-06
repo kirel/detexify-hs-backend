@@ -3,13 +3,14 @@ module Classifier
   newClassifier,
   trainClassifier,
   classifyWithClassifier,
+  showSamples,
   Sample(..),
   ) where
 
 import Control.Monad
 import Control.Concurrent.STM
 import Data.Heap
-import Data.List (foldl')
+import Data.List (foldl', sortBy)
 import Data.Map
 import Data.Maybe
 
@@ -37,6 +38,8 @@ data Classifier a = Classifier Int (TVar (Map String [a])) -- Classifier holds T
 -- TODO use a different Datastructure than []
 -- It should limit on a per sample basis
 
+showSamples (Classifier _ t) = atomically $ readTVar t
+
 type Score = Double
 type Results = [(String, Score)]
 
@@ -53,6 +56,17 @@ findKNearestNeighbors k unknown known = Data.Heap.toList $ foldl' step (Data.Hea
                       lb = distancelb unknown next
                       dist = distance unknown next
                       limit = score $ fromJust $ viewHead heap
+                      
+-- first sort known in lbdist order
+-- TODO find out if this should be actually faster...
+fastFindKNearestNeighbors :: Sample s => Int -> s -> [s] -> [Hit s]
+fastFindKNearestNeighbors k unknown known = Data.Heap.toList $ foldl' step (Data.Heap.empty :: MaxHeap (Hit s)) known' where
+  known' = sortBy (\(_,a) (_,b) -> compare a b) $ zip known (Prelude.map (distancelb unknown) known)
+  step heap (next, lb) | Data.Heap.size heap < k = Data.Heap.insert (Hit dist next) heap
+                       | lb < limit && dist < limit = Data.Heap.insert (Hit dist next) $ fromJust $ viewTail heap
+                       | otherwise = heap where
+                            limit = score $ fromJust $ viewHead heap
+                            dist = distance unknown next
 
 alterMin :: Score -> Maybe Score -> Maybe Score
 alterMin next Nothing = Just next
