@@ -1,12 +1,15 @@
 module Server where
 
 import Network.Loli
+import Network.Loli.Utils
+import Network.Loli.Template.TextTemplate
 import Hack.Handler.SimpleServer
 import Hack.Contrib.Request
+import Hack.Contrib.Response
 import Control.Monad.Reader
 import Control.Monad.Error
 import Data.ByteString.Lazy(ByteString)
-import Data.ByteString.Lazy.UTF8 (toString)
+import Data.ByteString.Lazy.UTF8 (toString, fromString)
 
 import Text.JSON
 import Strokes
@@ -15,13 +18,16 @@ import Strokes.JSON
 import StrokeSample
 import Classifier
 
-import Data.Map
+import Data.Map hiding (update)
 
 cK = 20
 classifier = newClassifier cK
 
+sanitize :: Strokes -> Strokes
+sanitize = cleanStrokes . removeEmptyStrokes . (limitStrokes 10)
+
 preprocess :: Strokes -> Stroke
-preprocess = concat
+preprocess = concat . (multiredistribute 30) . sanitize
 
 process :: ByteString -> Either String Stroke
 process string = do
@@ -62,7 +68,9 @@ main = do
         res <- classifyWithClassifier c $ newStrokeSample stroke Nothing
         return $ jsonResults res)
       (process (body env))
-    text $ j
+    update $ set_content_type "application/json"
+    update $ set_body (fromString j)
+    -- output $ text_template j
 
   -- train
   post "/train/:identifier" $ do
@@ -75,10 +83,17 @@ main = do
         trainClassifier c $ newStrokeSample stroke identifier -- weg!    
         return $ jsonMessage "Sample was successfully trained.")
       (process (body env))
-    text $ j
+    update $ set_content_type "application/json"
+    update $ set_body (fromString j)
+    -- output $ text_template j
     
   -- stats and counts TODO
   get "/" $ do
+    let j = encode $ makeObj [("counts", makeObj [])]
+    update $ set_content_type "application/json"
+    update $ set_body (fromString j)
+
+  get "/samples" $ do
     s <- liftIO $ showSamples c
     text $ show (s :: Map String [StrokeSample])
     
