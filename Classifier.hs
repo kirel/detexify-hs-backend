@@ -3,6 +3,7 @@ module Classifier
   newClassifier,
   trainClassifier,
   classifyWithClassifier,
+  getSampleCounts,
   showSamples,
   Sample(..),
   ) where
@@ -96,6 +97,11 @@ getSamples :: Sample s => Classifier s -> IO [s]
 getSamples (Classifier k t) = do
   m <- atomically $ readTVar t
   return $ fold (++) [] m
+
+getSampleCounts :: Sample s => Classifier s -> IO (Map String Int)
+getSampleCounts (Classifier k t) = do
+  m <- atomically $ readTVar t
+  return $ Data.Map.map length m
 
 classifyWithClassifier :: Sample s => Classifier s -> s -> IO Results
 classifyWithClassifier c@(Classifier k t) sample = do

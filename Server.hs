@@ -19,6 +19,7 @@ import StrokeSample
 import Classifier
 
 import Data.Map hiding (update)
+import Data.List (sortBy)
 
 cK = 20
 classifier = newClassifier cK
@@ -44,8 +45,10 @@ jsonMessage = jsonPair "message"
 
 -- necessarily ugly :/
 jsonResults :: [(String, Double)] -> String
-jsonResults = encode . (Prelude.map toJSO) where
+jsonResults = encode . (Prelude.map toJSO) . sortBySnd where -- FIXME sorting could be done on the client...
   toJSO (i, score) = makeObj [("id", showJSON i), ("score", showJSON score)]
+  sortBySnd = sortBy cmp where
+    cmp a b = compare (snd a) (snd b)
 
 -- server
 main = do
@@ -89,7 +92,8 @@ main = do
     
   -- stats and counts TODO
   get "/" $ do
-    let j = encode $ makeObj [("counts", makeObj [])]
+    s <- liftIO $ getSampleCounts c
+    let j = encode $ makeObj [("counts", showJSON (toJSObject (toList s)))]
     update $ set_content_type "application/json"
     update $ set_body (fromString j)
 
