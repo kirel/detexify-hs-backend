@@ -3,9 +3,10 @@ module Strokes
   Point(..), Stroke, Strokes, Points,
   add, sub, dot, scalar, norm,
   euclideanDistance, manhattanDistance, dist,
-  boundingbox, refit
+  boundingbox, refit, redistribute, redistribute'
   ) where
 
+import Data.List (sort, sortBy)
 import Sim
 
 -- data types
@@ -49,6 +50,9 @@ vendomorphism ((a11, a12), (a21, a22)) (Point (x, y)) = Point (a11*x + a12*y, a2
 scale :: Double -> Double -> Point -> Point
 scale x y = vendomorphism ((x, 0), (0, y))
 
+translate :: Double -> Double -> Point -> Point
+translate x y p = p `add` (Point (x,y))
+
 -- Stroke similarity
 delta = 1e-10
 instance Sim Double where
@@ -63,6 +67,7 @@ instance (Sim a) => Sim [a] where
 
 -- feature extractors
 
+slength :: Stroke -> Double
 slength (p:q:ps) = p `dist` q + (slength (q:ps))
 slength _ = 0
 
@@ -103,9 +108,16 @@ refit (x1, y1, x2, y2) stroke = for stroke $ \p -> (scale scaleX scaleY (p `sub`
       height -> y1
     trans = Point (transX, transY)
 
-redistribute :: Double -> Stroke -> Stroke
-redistribute _ [] = []
-redistribute dist s@(p:ps) = p:(redist dist s) where -- first point always part of new stroke
+-- remove successive duplicate points
+clean :: Stroke -> Stroke
+clean [p] = [p]
+clean s@(p:q:ps) | p == q = clean (p:ps)
+                 | otherwise = p:(clean (q:ps))
+
+redistribute' :: Double -> Stroke -> Stroke
+redistribute' dist _ | dist <= 0 = error "No Sir! No redistribution with non-positive distance!"
+redistribute' _ [] = []
+redistribute' dist s@(p:ps) = p:(redist dist s) where -- first point always part of new stroke
   redist :: Double -> Stroke -> Stroke
   redist _ [] = []
   redist _ [q] = [] -- last point is always discarded
@@ -115,3 +127,62 @@ redistribute dist s@(p:ps) = p:(redist dist s) where -- first point always part 
                            dir = q `sub` p
                            d = norm dir
                            ins = p `add` ((left/d) `scalar` dir)
+                           
+redistribute :: Int -> Stroke -> Stroke
+redistribute _ [] = error "Impossible to redistribute an empty stroke"
+redistribute num stroke = redist num $ clean stroke where
+  -- degenerate cases
+  redist num [p] = redist num [p, translate delta delta p] where
+    delta = 1e-5
+  -- normal case
+  redist num stroke = redistribute' dist stroke where
+    -- slength is never 0 because of preprocessing
+    dist = (slength stroke) / ((fromIntegral num) - 1 + delta) where
+      delta = 1e-10
+
+lengths = map slength
+sslength = (foldl1 (+)) . lengths -- lengths of multiple strokes
+toFracs :: Int -> Strokes -> [Double]
+toFracs num l = map ((* (fromIntegral num)).(/ len)) (lengths l) where
+  len = sslength l -- FIXME what if len is 0?
+  
+toIndexed = zip [0..]
+fromIndexed = snd.unzip
+sortBySnd l = ((map flip) . sort . (map flip)) l where
+  flip (a, b) = (b, a)
+
+-- transmogrify distributes <total> points proportionally over an array of Doubles
+transmogrify :: Int -> [Double] -> [Int]
+transmogrify points = fromIndexed . sort . unflunge . transmogrify' . flunge . sortBySnd . toIndexed . rescale where
+  rescale :: [Double] -> [Double]
+  rescale l = map ((/(foldl1 (+) l)).(*(fromIntegral points))) l
+  flunge :: [(Int, Double)] -> [(Int, Double, Int)]
+  flunge = map (\(a,b) -> (a,b,0))
+  unflunge :: [(Int, Double, Int)] -> [(Int, Int)]
+  unflunge = map (\(a,_,b) -> (a,b))
+  -- transmogrify' repeatedly walks the list
+  transmogrify' :: [(Int, Double, Int)] -> [(Int, Double, Int)]
+  transmogrify' l | left > 0 = transmogrify' $ transmogrify'' left l
+                  | otherwise = l where
+                      left = points - (((foldl1 (+)) . fromIndexed . unflunge) l)
+  -- transmogrify'' walks the list once
+  transmogrify'' :: Int -> [(Int, Double, Int)] -> [(Int, Double, Int)]
+  transmogrify'' 0 l = l
+  transmogrify'' _ [] = []
+  transmogrify'' left ((i,r,n):ls) | (ceiling r) > n = (i,r,n+1):(transmogrify'' (left-1) ls)
+                                   | otherwise = (i,r,n):(transmogrify'' left ls)
+-- sortByIndex = sort
+-- unwrap again
+unwrap = map (fst.snd)
+redistributeEach :: [Int] -> Strokes -> Strokes
+redistributeEach = zipWith redistribute
+
+-- multiredistribute :: Int -> Strokes -> Strokes
+-- multiredistribute num strokes = redistributeEach nums strokes where
+--   nums = unwrap $ flunge num $ sortByFrac $ toIndexedProperFracList $ toFracList num strokes
+
+-- redistribute each so that the concatenation of the results has n points
+-- multiredistribute :: Int -> Strokes -> Strokes
+-- multiredistribute num strokes = [] where
+--   lengths = map slength strokes
+--   totalLength = foldl1 + lengths
