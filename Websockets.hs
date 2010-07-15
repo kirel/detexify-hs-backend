@@ -39,9 +39,9 @@ instance JSON Request where
           rid = valFromObj "id" j
           rclassify = valFromObj "classify" j
   readJSON _ = Error "Unable to read JSRequest"
-  -- showJSON :: Point -> JSValue
+  -- showJSON :: Request -> JSValue
   -- no need... never encode requests
-  -- showJSON (Point (x,y)) = showJSON $ toJSObject [("x",x),("y",y)]
+  showJSON _ = showJSON $ JSNull
 
 jerror s = showJSON $ toJSObject [("error", showJSON s)]
 
@@ -53,6 +53,7 @@ showJSOResults = showJSON . (Prelude.map toJSO) . sortBySnd where -- FIXME sorti
 instance JSON Response where
   -- readJSON :: JSValue -> Result Point
   -- no need... never decode requests
+  readJSON _ = Error "Unable to read JSResponse"
   -- showJSON :: Point -> JSValue
   showJSON (TrainRes (Just e)) = jerror e
   showJSON (TrainRes (Nothing)) = showJSON $ toJSObject [("message", showJSON "ok")]
@@ -88,15 +89,12 @@ onMessage c ws msg = do
     WS.send ws (encode resp)
 
 main = do
-  c <- classifier
-      
-  let config = WS.Config {
-     WS.configPort      = 9876,
-     WS.configOrigins   = Nothing,
-     WS.configDomains   = Nothing,
-     WS.configOnOpen    = onOpen,
-     WS.configOnMessage = onMessage c,
-     WS.configOnClose   = onClose
-   }
-           
-  withSocketsDo $ WS.startServer config
+  c <- classifier           
+  withSocketsDo $ WS.startServer $ WS.Config {
+    WS.configPort      = 9876,
+    WS.configOrigins   = Nothing,
+    WS.configDomains   = Nothing,
+    WS.configOnOpen    = onOpen,
+    WS.configOnMessage = onMessage c,
+    WS.configOnClose   = onClose
+  }
