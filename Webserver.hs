@@ -1,4 +1,4 @@
-module Server where
+module Main where
 
 import Network.Loli
 import Network.Loli.Utils
@@ -53,7 +53,8 @@ jsonResults = encode . (Prelude.map toJSO) . sortBySnd where -- FIXME sorting co
 -- server
 main = do
   c <- classifier
-  (run 3000) . loli $ do
+  print "Server starting at port 3000"
+  (run 3000) . loli $ do    
     
   get "/env" $ do
     env <- ask
