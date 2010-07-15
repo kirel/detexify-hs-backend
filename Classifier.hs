@@ -6,6 +6,7 @@ module Classifier
   getSampleCounts,
   showSamples,
   Sample(..),
+  Results,
   ) where
 
 import Control.Monad

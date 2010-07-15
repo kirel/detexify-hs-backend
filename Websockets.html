@@ -14,11 +14,16 @@
         var ws = new WebSocket("ws://localhost:9876/");
         ws.onopen = function() { 
           $('#connectionStatus').text('Connection opened');
-    
-          ws.send("Testing");
-          ws.send("Testing");
-          ws.send("1 2 3");
-          ws.send("It works!");
+          
+          var strokes = [[{x:0,y:0},{x:1,y:0}]];
+          var otherstrokes = [[{x:0,y:0},{x:0,y:1}]];
+          ws.send(JSON.stringify({train:strokes, id:'foo'}));
+          ws.send(JSON.stringify({train:otherstrokes, id:'bar'}));
+          ws.send(JSON.stringify({classify:strokes}));
+          ws.send(JSON.stringify({train:"Illegal strokes", id:'foo'}));
+          ws.send(JSON.stringify({train:"Illegal strokes", id: {illegal:'id'}}));
+          ws.send(JSON.stringify({classify:"Illegal strokes"}));
+          ws.send("Illegal");
         };
 
         ws.onmessage = function(evt) {
