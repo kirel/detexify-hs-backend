@@ -3,8 +3,8 @@ module Strokes
   Point(..), Stroke, Strokes, Points,
   add, sub, dot, scalar, norm,
   euclideanDistance, manhattanDistance, dist,
-  boundingbox, refit, redistribute, redistribute', multiredistribute,
-  limitStrokes, cleanStrokes, removeEmptyStrokes
+  boundingbox, refit, refitStrokes, redistribute, redistribute', multiredistribute,
+  limitStrokes, cleanStroke, cleanStrokes, removeEmptyStrokes
   ) where
 
 import Data.List (sort, sortBy)
@@ -83,7 +83,8 @@ boundingbox ((Point (x,y)):ps) = foldl step (x,y,x,y) ps where
 
 -- stroke processors
 
--- fit into square (n, e, s, w)
+refitStrokes square = map (refit square)
+-- fit into square (x1, y1, x2, y2)
 refit :: (Double, Double, Double, Double) -> Stroke -> Stroke
 refit (x1, y1, x2, y2) _ | x1 > x2 || y1 > y2 = error "Dude! Your square doesn't make sense!"
 refit _ [] = [] 
@@ -110,11 +111,17 @@ refit (x1, y1, x2, y2) stroke = for stroke $ \p -> (scale scaleX scaleY (p `sub`
     trans = Point (transX, transY)
 
 -- remove successive duplicate points
-clean :: Stroke -> Stroke
-clean [] = []
-clean [p] = [p]
-clean s@(p:q:ps) | p == q = clean (p:ps)
-                 | otherwise = p:(clean (q:ps))
+unduplicate :: Stroke -> Stroke
+unduplicate [] = []
+unduplicate [p] = [p]
+unduplicate s@(p:q:ps) | p == q = unduplicate (p:ps)
+                 | otherwise = p:(unduplicate (q:ps))
+
+-- turn single-point-strokes into small two-point-strokes
+undegenerate :: Stroke -> Stroke
+undegenerate [] = error "Sorry. Too degenerated even for me!"
+undegenerate [p] = [p, translate delta delta p]
+undegenerate s = s
 
 redistribute' :: Double -> Stroke -> Stroke
 redistribute' dist _ | dist <= 0 = error "No Sir! No redistribution with non-positive distance!"
@@ -132,10 +139,9 @@ redistribute' dist s@(p:ps) = p:(redist dist s) where -- first point always part
                            
 redistribute :: Int -> Stroke -> Stroke
 redistribute _ [] = error "Impossible to redistribute an empty stroke"
-redistribute num stroke = redist num $ clean stroke where
+redistribute num stroke = redist num stroke where
   -- degenerate cases
-  redist num [p] = redist num [p, translate delta delta p] where
-    delta = 1e-5
+  redist num [p] = error "Can't redistribute single points."
   -- normal case
   redist num stroke = redistribute' dist stroke where
     -- slength is never 0 because of preprocessing
@@ -183,5 +189,8 @@ removeEmptyStrokes = filter (/=[])
 limitStrokes :: Int -> Strokes -> Strokes
 limitStrokes = take
 
+cleanStroke :: Stroke -> Stroke
+cleanStroke = undegenerate . unduplicate
+
 cleanStrokes :: Strokes -> Strokes
-cleanStrokes = map clean
+cleanStrokes = map cleanStroke
