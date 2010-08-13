@@ -20,7 +20,7 @@ sanitize :: Strokes -> Strokes
 sanitize = cleanStrokes . removeEmptyStrokes . (limitStrokes 10)
 
 preprocess :: Strokes -> Stroke
-preprocess = concat . (multiredistribute 30) . sanitize
+preprocess = concat . (multiredistribute 30) . (refitStrokes (0,0,1,1)) . sanitize
 
 -- messages
 data Request = TrainReq String Strokes | ClassifyReq Strokes
