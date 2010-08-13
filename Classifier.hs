@@ -6,6 +6,7 @@ module Classifier
   getSampleCounts,
   showSamples,
   Sample(..),
+  Score(..),
   Results,
   ) where
 
@@ -26,15 +27,15 @@ class Sample a where
   identifier :: a -> Maybe String -- Nothing for unknown class
 
 data Hit s = Hit {
-    score :: Double,
+    samplescore :: Double,
     sample :: s
   } deriving (Show)
 
 instance Eq (Hit s) where
-  h == o = (score h) == (score o)
+  h == o = (samplescore h) == (samplescore o)
   
 instance Ord (Hit s) where
-  compare h o = compare (score h) (score o)
+  compare h o = compare (samplescore h) (samplescore o)
   
 data Classifier a = Classifier Int (TVar (Map String [a])) -- Classifier holds Training Data
 -- TODO use a different Datastructure than []
@@ -42,8 +43,8 @@ data Classifier a = Classifier Int (TVar (Map String [a])) -- Classifier holds T
 
 showSamples (Classifier _ t) = atomically $ readTVar t
 
-type Score = Double
-type Results = [(String, Score)]
+data Score = Score { id :: String, score :: Double } deriving (Show)
+type Results = [Score]
 
 -- helper
 update :: TVar a -> (a -> a) -> STM ()
@@ -57,7 +58,7 @@ findKNearestNeighbors k unknown known = Data.Heap.toList $ foldl' step (Data.Hea
                  | otherwise = heap where
                       lb = distancelb unknown next
                       dist = distance unknown next
-                      limit = score $ fromJust $ viewHead heap
+                      limit = samplescore $ fromJust $ viewHead heap
                       
 -- first sort known in lbdist order
 -- TODO find out if this should be actually faster...
@@ -67,16 +68,17 @@ fastFindKNearestNeighbors k unknown known = Data.Heap.toList $ foldl' step (Data
   step heap (next, lb) | Data.Heap.size heap < k = Data.Heap.insert (Hit dist next) heap
                        | lb < limit && dist < limit = Data.Heap.insert (Hit dist next) $ fromJust $ viewTail heap
                        | otherwise = heap where
-                            limit = score $ fromJust $ viewHead heap
+                            limit = samplescore $ fromJust $ viewHead heap
                             dist = distance unknown next
 
-alterMin :: Score -> Maybe Score -> Maybe Score
+alterMin :: Double -> Maybe Double -> Maybe Double
 alterMin next Nothing = Just next
 alterMin next (Just before) = Just $ min before next
-                      
+       
 results :: Sample s => [Hit s] -> Results
-results hits = Data.Map.toList $ foldl step Data.Map.empty hits where
-  step results hit = alter (alterMin $ score hit) (fromJust $ identifier $ sample hit) results
+results hits = Prelude.map toScore $ Data.Map.toList $ foldl step Data.Map.empty hits where
+  toScore = uncurry Score
+  step results hit = alter (alterMin $ samplescore hit) (fromJust $ identifier $ sample hit) results
   
 -- insert and accumulate samples
 insertWithLimit :: Sample s => Int -> s -> Map String [s] -> Map String [s]
