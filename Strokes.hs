@@ -2,16 +2,17 @@ module Strokes
   (
   Point(..), Stroke, Strokes, Points,
   add, sub, dot, scalar, norm,
+  delta,
   euclideanDistance, manhattanDistance, dist,
-  boundingbox, refit, refitStrokes, redistribute, redistribute', multiredistribute,
-  limitStrokes, cleanStroke, cleanStrokes, removeEmptyStrokes
+  boundingbox, slength, refit, unduplicate, smooth, redistribute, redistribute',
+  limit, dropEmpty
   ) where
 
 import Data.List (sort, sortBy)
 import Sim
 
 -- data types
-newtype Point = Point (Double, Double) deriving (Show, Eq)
+newtype Point = Point (Double, Double) deriving (Show, Eq, Ord)
 type Stroke = [Point]
 type Strokes = [Stroke]
 type Points = [Point]  
@@ -77,13 +78,8 @@ boundingbox ((Point (x,y)):ps) = foldl step (x,y,x,y) ps where
   step :: (Double, Double, Double, Double) -> Point -> (Double, Double, Double, Double)
   step (minX, minY, maxX, maxY) (Point (x,y)) = (min minX x, min minY y, max maxX x, max maxY y)
 
--- functions for processing strokes
--- concatStrokes :: Strokes -> Stroke
--- concat = concat
-
 -- stroke processors
 
-refitStrokes square = map (refit square)
 -- fit into square (x1, y1, x2, y2)
 refit :: (Double, Double, Double, Double) -> Stroke -> Stroke
 refit (x1, y1, x2, y2) _ | x1 > x2 || y1 > y2 = error "Dude! Your square doesn't make sense!"
@@ -110,87 +106,47 @@ refit (x1, y1, x2, y2) stroke = for stroke $ \p -> (scale scaleX scaleY (p `sub`
       height -> y1
     trans = Point (transX, transY)
 
--- remove successive duplicate points
+-- remove successive duplicate (similar) points
 unduplicate :: Stroke -> Stroke
 unduplicate [] = []
 unduplicate [p] = [p]
-unduplicate s@(p:q:ps) | p == q = unduplicate (p:ps)
-                 | otherwise = p:(unduplicate (q:ps))
+unduplicate (p:q:ps) | p ~~ q    = unduplicate (p:ps)
+                       | otherwise = p:(unduplicate (q:ps))
 
--- turn single-point-strokes into small two-point-strokes
-undegenerate :: Stroke -> Stroke
-undegenerate [] = error "Sorry. Too degenerated even for me!"
-undegenerate [p] = [p, translate delta delta p]
-undegenerate s = s
+-- smooth
+smooth :: Stroke -> Stroke
+smooth s@(x:y:z:ps) = x:(smooth' s) where
+  smooth' (x:y:z:ps) = ((1/3) `scalar` (x `add` y `add` z)):(smooth' (y:z:ps))
+  smooth' (x:ps) = ps
+smooth ps = ps
 
+-- redistribute to equidistant series by distance
 redistribute' :: Double -> Stroke -> Stroke
 redistribute' dist _ | dist <= 0 = error "No Sir! No redistribution with non-positive distance!"
-redistribute' _ [] = []
-redistribute' dist s@(p:ps) = p:(redist dist s) where -- first point always part of new stroke
+redistribute' dist s@(p:q:ps) = p:(redist dist s) where -- first point always part of new stroke
   redist :: Double -> Stroke -> Stroke
-  redist _ [] = []
-  redist _ [q] = [] -- last point is always discarded
   redist left (p:q:ps) | d < left = redist (left - d) (q:ps)
                        | otherwise = ins:(redist dist (ins:q:ps))
                          where
                            dir = q `sub` p
                            d = norm dir
                            ins = p `add` ((left/d) `scalar` dir)
+  redist _ ps = ps -- done when only one left
+redistribute' _ ps = ps -- empty or single point strokes stay unmodified
                            
+-- redistribute to equidistant series by number of points
+-- this might go wrong due to numeric inaccuracy (esp. for large n)
+-- but together with unduplicate it should work well enough
 redistribute :: Int -> Stroke -> Stroke
-redistribute _ [] = error "Impossible to redistribute an empty stroke"
-redistribute num stroke = redist num stroke where
-  -- degenerate cases
-  redist num [p] = error "Can't redistribute single points."
-  -- normal case
-  redist num stroke = redistribute' dist stroke where
-    -- slength is never 0 because of preprocessing
-    dist = (slength stroke) / ((fromIntegral num) - 1 + delta) where
-      delta = 1e-10
+-- degenerate cases
+redistribute _ [] = []
+redistribute _ [p] = [p]
+-- normal cases
+redistribute 0 _ = []
+redistribute 1 s = [head s]
+redistribute num stroke@(p:q:ps) = redistribute' dist stroke where
+  dist = (slength stroke) / ((fromIntegral num) - 1)
 
-lengths = map slength
-fixLengths = map fixLength where -- turn zero lengths into somethin small but non-zero
-  fixLength 0 = 1e-10
-  fixLength l = l
+dropEmpty xs = filter (/=[]) xs
 
--- transmogrify distributes <points> proportionally over an array of Doubles
-transmogrify :: Int -> [Double] -> [Int]
-transmogrify points = unflunge . transmogrify' . flunge . rescale where
-  rescale :: [Double] -> [Double]
-  rescale l = map ((/(foldl1 (+) l)).(*(fromIntegral points))) l
-  flunge :: [Double] -> [(Double, Int)]
-  flunge = map (\a -> (a,0))
-  unflunge :: [(Double, Int)] -> [Int]
-  unflunge = map (\(_,b) -> b)
-  -- transmogrify' repeatedly walks the list
-  transmogrify' :: [(Double, Int)] -> [(Double, Int)]
-  transmogrify' l | left > 0 = transmogrify' $ transmogrify'' left l
-                  | otherwise = l where
-                      left = points - (((foldl1 (+)) . unflunge) l)
-  -- transmogrify'' walks the list once
-  transmogrify'' :: Int -> [(Double, Int)] -> [(Double, Int)]
-  transmogrify'' 0 l = l
-  transmogrify'' _ [] = []
-  transmogrify'' left ((r,n):ls) | (ceiling r) > n = (r,n+1):(transmogrify'' (left-1) ls)
-                                 | otherwise = (r,n):(transmogrify'' left ls)
-redistributeEach :: [Int] -> Strokes -> Strokes
-redistributeEach = zipWith redistribute
-
--- beware! fails on empty strokes
-multiredistribute :: Int -> Strokes -> Strokes
-multiredistribute num strokes | num < length strokes =
-  error "Multiredistribute doesn't work with num smaller than the number of strokes" 
-multiredistribute num strokes = redistributeEach nums strokes where
-  nums = transmogrify num $ fixLengths $ lengths strokes
-
-removeEmptyStrokes :: Strokes -> Strokes
-removeEmptyStrokes = filter (/=[])
-
-limitStrokes :: Int -> Strokes -> Strokes
-limitStrokes = take
-
-cleanStroke :: Stroke -> Stroke
-cleanStroke = undegenerate . unduplicate
-
-cleanStrokes :: Strokes -> Strokes
-cleanStrokes = map cleanStroke
+limit = take

@@ -17,10 +17,10 @@ cK = 20
 classifier = newClassifier cK
 
 sanitize :: Strokes -> Strokes
-sanitize = cleanStrokes . removeEmptyStrokes . (limitStrokes 10)
+sanitize = (map (unduplicate.redistribute 20.refit (0,0,1,1).smooth.unduplicate)).limit 10
 
-preprocess :: Strokes -> Stroke
-preprocess = concat . (multiredistribute 30) . (refitStrokes (0,0,1,1)) . sanitize
+process :: Strokes -> Strokes
+process = sanitize
 
 -- messages
 data Request = TrainReq String Strokes | ClassifyReq Strokes
@@ -62,13 +62,13 @@ instance JSON Response where
   showJSON FailedRes = jerror "Illegal request"
   
 -- handling requests
-
+-- TODO reject invalid strokes
 handle (Ok (TrainReq id strokes)) c = do
-  let stroke = preprocess strokes
+  let stroke = process strokes
   trainClassifier c (newStrokeSample stroke (Just id))
   return (TrainRes Nothing)
 handle (Ok (ClassifyReq strokes)) c = do
-  let stroke = preprocess strokes
+  let stroke = process strokes
   res <- classifyWithClassifier c (newStrokeSample stroke Nothing)
   return (ClassifyRes (Right res))
 handle _ c = do

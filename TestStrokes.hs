@@ -18,28 +18,36 @@ prop_stroke_fits_inside_bounding_box :: Stroke -> Property
 prop_stroke_fits_inside_bounding_box stroke = stroke /= [] ==> for stroke $ \p ->
   p `inside` (boundingbox stroke)
 
+prop_refit_into_boundingbox_is_identity :: Stroke -> Property
+prop_refit_into_boundingbox_is_identity stroke =
+  stroke /= [] ==>
+  refit (boundingbox stroke) stroke ~~ stroke
+
 prop_refit_fits_inside :: (Double, Double, Double, Double) -> Stroke -> Property
 prop_refit_fits_inside box stroke =
-  stroke /= [] ==> validbox box ==> for (refit box stroke) $ \p -> p `inside` box
+  stroke /= [] ==> validbox box ==>
+  for (refit box stroke) $ \p -> p `inside` box
     
 prop_refit_idempotent :: (Double, Double, Double, Double) -> Stroke -> Property
 prop_refit_idempotent box stroke =
   stroke /= [] ==> validbox box ==> refit box stroke ~~ refit box (refit box stroke)
 
-prop_redistribute_works_on_clean_stroke :: Int -> Stroke -> Property
-prop_redistribute_works_on_clean_stroke n stroke =
-  length stroke > 0 ==> n > 0 ==> length (redistribute n $ cleanStroke stroke) == n
-    
-prop_multiredistribute_works_on_clean_strokes :: Int -> Strokes -> Property
-prop_multiredistribute_works_on_clean_strokes n strokes =
-  length strokes > 0 ==>
-  n > length strokes ==>
-  all (\s -> length s > 0) strokes ==>
-  foldl1 (+) (map length (multiredistribute n $ cleanStrokes strokes)) == n
+prop_redistdribute'_preserves_first_point :: Double -> Stroke -> Property
+prop_redistdribute'_preserves_first_point d stroke =
+  d > 3 * delta ==>
+  slength stroke > 0 ==>
+  head (redistribute' d stroke) ~~ head stroke
+
+prop_redistdribute'_preserves_last_point :: Double -> Stroke -> Property
+prop_redistdribute'_preserves_last_point d stroke =
+  d > 3 * delta ==>
+  slength stroke > 0 ==>
+  last (redistribute' d stroke) ~~ last stroke
 
 main = do
   quickCheck prop_stroke_fits_inside_bounding_box
   quickCheck prop_refit_fits_inside
+  quickCheck prop_refit_into_boundingbox_is_identity
   quickCheck prop_refit_idempotent
-  quickCheck prop_redistribute_works_on_clean_stroke
-  quickCheck prop_multiredistribute_works_on_clean_strokes
+  quickCheck prop_redistdribute'_preserves_first_point 
+  quickCheck prop_redistdribute'_preserves_last_point 
