@@ -13,11 +13,17 @@ import Classifier
 
 -- setup classifier
 
-cK = 20
+cK = 50
 classifier = newClassifier cK
 
 sanitize :: Strokes -> Strokes
-sanitize = (map (unduplicate.redistribute 20.refit (0,0,1,1).smooth.unduplicate)).limit 10
+sanitize = (map (dominant alpha
+                .unduplicate
+                .redistribute 10
+                .aspectrefit (Point (0,0), Point (1,1))
+                .smooth
+                .unduplicate)
+                ).limit 10
 
 process :: Strokes -> Strokes
 process = sanitize

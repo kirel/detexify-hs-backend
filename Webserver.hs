@@ -3,6 +3,7 @@ module Main where
 import Hack.Handler.Happstack
 import qualified Hack.Contrib.Request as Request
 import qualified Hack.Contrib.Response as Response
+import Hack.Contrib.Middleware.UTF8Body
 
 import Network.Loli hiding(mime)
 import Network.Loli.Utils
@@ -31,8 +32,16 @@ classifier = newClassifier cK
 -- 
 -- sort = sortBy ord
 
+alpha = 2*pi*15/360
+  
 sanitize :: Strokes -> Strokes
-sanitize = (map (unduplicate.redistribute 10.refit (0,0,1,1).smooth.unduplicate)).limit 10
+sanitize = (map (dominant alpha
+                .unduplicate
+                .redistribute 10
+                .aspectrefit (Point (0,0), Point (1,1))
+                .smooth
+                .unduplicate)
+                ).limit 10
 
 process :: Strokes -> Strokes
 process = sanitize
@@ -60,7 +69,7 @@ jsonerror e = do
   json $ toJSObject [("error", e)]
 jsonmessage m = json $ toJSObject [("message", m)]
 
-serverinfo = json $ toJSObject [("server", "Not Betty :("), ("version", "0.0.1")]
+serverinfo = json $ toJSObject [("server", "Nöt Betty :("), ("version", "0.0.1")]
 
 classify c d =
   either
@@ -84,6 +93,7 @@ main = do
   c <- classifier
 
   run . loli $ do
+    middleware utf8_body
     
     get "/" $ do
       serverinfo

@@ -10,7 +10,9 @@ module Classifier
 
 import Control.Monad
 import Control.Concurrent.STM
-import Data.Heap
+import Control.Parallel.Strategies
+import Control.Parallel
+-- import Data.Heap
 import Data.List (foldl', sortBy, sort)
 import qualified Data.Map as Hash
 import Data.Maybe
@@ -43,6 +45,8 @@ data Classifier a = Classifier {
 
 data Score = Score { id :: String, score :: Double } deriving (Show)
 type Results = [Score]
+
+pmap = (parMap rwhnf)
 
 -- helper
 updateTVar :: TVar a -> (a -> a) -> STM ()
@@ -87,6 +91,13 @@ getSamples (Classifier _ t) = atomically $ readTVar t
 classifyWithClassifier :: Sample s => Classifier s -> s -> IO Results
 classifyWithClassifier c@(Classifier k t) unknown = do
   samples <- getSamples c
-  return $ map toScore $ sort $ Hash.elems $ Hash.map bestHit samples where
+  return $ map toScore $ sort $ pmap bestHit $ Hash.elems $ samples where
     toScore hit = Score ((fromJust.identifier.sample) hit) (samplescore hit)
     bestHit = minimum . (map (\next -> Hit (distance unknown next) next))
+    -- bestHit = avgminimum2 . (map (\next -> Hit (distance unknown next) next))
+    avgminimum2 unsorted = merge m m' m'' where
+      m = head sorted
+      m' = (head.tail) sorted
+      m'' = (head.tail.tail) sorted
+      sorted = sort unsorted
+      merge (Hit d1 s) (Hit d2 _) (Hit d3 _) = Hit ((d1+d2+d3)/3) s
