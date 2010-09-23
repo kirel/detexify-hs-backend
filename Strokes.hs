@@ -4,7 +4,7 @@ module Strokes
   add, sub, dot, scalar, norm,
   delta,
   euclideanDistance, manhattanDistance, dist,
-  boundingbox, slength, refit, unduplicate, smooth, redistribute, redistribute',
+  boundingbox, slength, refit, aspectrefit, unduplicate, smooth, redistribute, redistribute', dominant,
   limit, dropEmpty
   ) where
 
@@ -16,11 +16,15 @@ newtype Point = Point (Double, Double) deriving (Show, Eq, Ord)
 type Stroke = [Point]
 type Strokes = [Stroke]
 type Points = [Point]  
+type Rect = (Point, Point)
 
 for = flip map
+both f (a, b) = (f a, f b)
 
--- x (Point (x,_)) = x
--- y (Point (_,y)) = y
+xCoord (Point (x,_)) = x
+yCoord (Point (_,y)) = y
+width ((Point (x1,_)), (Point (x2,_))) = x2 - x1
+height ((Point (_,y1)), (Point (_,y2))) = y2 - y1
 -- elementwise = zipWith for Points
 elementwise :: (Double -> Double) -> Point -> Point
 elementwise f (Point (x,y)) = Point (f x, f y)
@@ -74,19 +78,19 @@ slength (p:q:ps) = p `dist` q + (slength (q:ps))
 slength _ = 0
 
 boundingbox [] = error "An empty stroke has no bounding box"
-boundingbox ((Point (x,y)):ps) = foldl step (x,y,x,y) ps where
-  step :: (Double, Double, Double, Double) -> Point -> (Double, Double, Double, Double)
-  step (minX, minY, maxX, maxY) (Point (x,y)) = (min minX x, min minY y, max maxX x, max maxY y)
+boundingbox ((Point (x,y)):ps) = foldl step (Point (x,y), Point (x,y)) ps where
+  step :: Rect -> Point -> Rect
+  step (Point (minX, minY), Point (maxX, maxY)) (Point (x,y)) = (Point (min minX x, min minY y), Point (max maxX x, max maxY y))
 
 -- stroke processors
 
--- fit into square (x1, y1, x2, y2)
-refit :: (Double, Double, Double, Double) -> Stroke -> Stroke
-refit (x1, y1, x2, y2) _ | x1 > x2 || y1 > y2 = error "Dude! Your square doesn't make sense!"
+-- fit into rect (x1, y1, x2, y2)
+refit :: Rect -> Stroke -> Stroke
+refit (Point (x1, y1), Point (x2, y2)) _ | x1 > x2 || y1 > y2 = error "Dude! Your rect doesn't make sense!"
 refit _ [] = [] 
-refit (x1, y1, x2, y2) stroke = for stroke $ \p -> (scale scaleX scaleY (p `sub` reset)) `add` trans
+refit (Point (x1, y1), Point (x2, y2)) stroke = for stroke $ \p -> (scale scaleX scaleY (p `sub` reset)) `add` trans
   where
-    (bbx1, bby1, bbx2, bby2) = boundingbox stroke
+    (Point (bbx1, bby1), Point (bbx2, bby2)) = boundingbox stroke
     reset = Point (bbx1, bby1)
     bbWidth = bbx2 - bbx1
     bbHeight = bby2 - bby1
@@ -105,6 +109,28 @@ refit (x1, y1, x2, y2) stroke = for stroke $ \p -> (scale scaleX scaleY (p `sub`
       0 -> y1 + 1/2 * targetHeight
       height -> y1
     trans = Point (transX, transY)
+
+-- fit the first rect maximally and centered into the second rect keeping the aspect ratio
+aspectfit :: Rect -> Rect -> Rect
+aspectfit source@(a, b) target@(c, d) | a == b = ((1/2) `scalar` (c `add` d), (1/2) `scalar` (c `add` d))
+                                      | otherwise = both reposition source where
+  reset = fst source
+  sourcewidth = width source
+  sourceheight = height source
+  targetwidth = width target
+  targetheight = height target
+  sourceratio = sourcewidth/sourceheight
+  targetratio = targetwidth/targetheight
+  -- bigger ratio <~> wider
+  sourcewider = sourceratio > targetratio
+  scalefactor | sourcewider = 1/sourcewidth*targetwidth -- scale to fit width of target and center
+              | otherwise   = 1/sourceheight*targetheight
+  offset      | sourcewider = Point (0, (targetheight - scalefactor*sourceheight)/2)
+              | otherwise   = Point ((targetwidth - scalefactor*sourcewidth)/2, 0)
+  reposition p = (scale scalefactor scalefactor (p `sub` reset)) `add` offset `add` (fst target)
+
+aspectrefit :: Rect -> Stroke -> Stroke
+aspectrefit r s = refit (aspectfit (boundingbox s) r) s
 
 -- remove successive duplicate (similar) points
 unduplicate :: Stroke -> Stroke
@@ -146,6 +172,19 @@ redistribute 0 _ = []
 redistribute 1 s = [head s]
 redistribute num stroke@(p:q:ps) = redistribute' dist stroke where
   dist = (slength stroke) / ((fromIntegral num) - 1)
+
+dominant :: Double -> Stroke -> Stroke
+dominant alpha s@(x:y:z:ps) = x:(dominant' alpha s) where
+  dominant' alpha (x:y:z:ps) | angle x y z < alpha = dominant' alpha (x:z:ps)
+                             | otherwise = y:(dominant' alpha (y:z:ps))
+  dominant' _ (x:ps) = ps
+  -- angle x y z = acos (min 1 (max (-1) (1/((norm v)*(norm w)) `scalar` v `dot` w))) where
+  angle x y z = acos $ fixdomain $ (v `dot` w)/((norm v)*(norm w)) where
+    fixdomain = (min 1).(max (-1))
+    v = y `sub` x
+    w = z `sub` y
+dominant _ ps = ps
+
 
 dropEmpty xs = filter (/=[]) xs
 
