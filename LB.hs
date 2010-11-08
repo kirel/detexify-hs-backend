@@ -5,7 +5,7 @@ module LB
   ) where
 
 import Data.Maybe
-import Data.List (sortBy, transpose, nub, foldl')
+import Data.List (sortBy, transpose, nub, foldl', foldl1')
 import Strokes
 
 newtype ConvexHull = ConvexHull [Point] deriving (Show)
@@ -24,8 +24,8 @@ angle (Point (x, y)) = x/y
 grahamConvexHull :: Points -> ConvexHull
 -- grahamConvexHull [_] = [_]
 grahamConvexHull points | length points < 4 = ConvexHull $ nub points
-grahamConvexHull points = ConvexHull $ reverse $ nub $ foldl step [] sortedPoints where
-                        minP = foldl1 st points where -- checked!
+grahamConvexHull points = ConvexHull $ reverse $ nub $ foldl' step [] sortedPoints where
+                        minP = foldl1' st points where -- checked!
                           st (Point (minPx, minPy)) (Point (px, py)) | py < minPy || (py == minPy && px < minPx) = Point (px, py)
                                                      | otherwise = Point (minPx, minPy)
                         comp v w = compare (negate $ angle v, norm v) (negate $ angle w, norm w)
@@ -97,12 +97,12 @@ pointHullDistance point (ConvexHull hull) =
 
 -- Stroke -> Hulls -> Double
 dtwlb :: Stroke -> [ConvexHull] -> Double
-dtwlb stroke hulls = foldl (+) 0 $ zipWith pointHullDistance stroke hulls
+dtwlb stroke hulls = foldl' (+) 0 $ zipWith pointHullDistance stroke hulls
 
 for = flip map
 
 naivedtw :: Eq a => ( a -> a -> Double ) -> Int -> [a] -> [a] -> Double
-naivedtw measure w s o = foldl1 (+) $ for (zip s o') $ \(p, ps) ->
+naivedtw measure w s o = foldl1' (+) $ for (zip s o') $ \(p, ps) ->
   minimum $ for ps $ \p' -> measure p p' 
   where
     o' = shiftedSeries o w

@@ -8,7 +8,7 @@ module Strokes
   limit, dropEmpty
   ) where
 
-import Data.List (sort, sortBy)
+import Data.List (sort, sortBy, foldl')
 import Sim
 
 -- data types
@@ -78,7 +78,7 @@ slength (p:q:ps) = p `dist` q + (slength (q:ps))
 slength _ = 0
 
 boundingbox [] = error "An empty stroke has no bounding box"
-boundingbox ((Point (x,y)):ps) = foldl step (Point (x,y), Point (x,y)) ps where
+boundingbox ((Point (x,y)):ps) = foldl' step (Point (x,y), Point (x,y)) ps where
   step :: Rect -> Point -> Rect
   step (Point (minX, minY), Point (maxX, maxY)) (Point (x,y)) = (Point (min minX x, min minY y), Point (max maxX x, max maxY y))
 

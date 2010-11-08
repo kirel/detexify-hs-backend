@@ -4,6 +4,7 @@ module DTW
   ) where
 
 import Data.Array
+import Data.List (foldl1')
 
 add :: (Double, Int) -> (Double, Int) -> (Double, Int)
 add (a, b) (c, d) = (a+c, b+d)
@@ -45,7 +46,7 @@ gdtw :: Eq a => ( a -> a -> Double ) -> [a] -> [a] -> Double
 gdtw measure s [] = gdtw measure [] s
 gdtw measure [] _ = error "Can not compare empty series!"
 gdtw measure s o = quo $ gdtw' measure s o (measure (head s) (head o), 1) where
-  gdtw' measure [a] s (r,l) = (r + foldl1 (+) (map (measure a) s), l + length s)
+  gdtw' measure [a] s (r,l) = (r + foldl1' (+) (map (measure a) s), l + length s)
   gdtw' measure s [a] (r,l) = gdtw' measure [a] s (r,l)
   gdtw' measure s o (r,l) | left   == min = gdtw' measure (tail s) o        (r + left, l+1)
                           | middle == min = gdtw' measure (tail s) (tail o) (r + middle, l+1)
