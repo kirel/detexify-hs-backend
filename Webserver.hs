@@ -84,9 +84,11 @@ train _ _ Nothing = jsonerror "no training without an id"
 train c d id = either
   (\e -> jsonerror e)
   (\strokes -> do
-    liftIO $ trainClassifier c (fromJust id) (newStrokeSample (process strokes))
+    let processed = (process strokes)
+    liftIO $ print $ show processed -- FIXME workaround for strict evaluation
+    liftIO $ trainClassifier c (fromJust id) (newStrokeSample processed)
     jsonmessage "Sample was successfully trained.")
-  (validate $ resultToEither $ decode $ d)
+  ((validate.resultToEither.decode) d)
   
 main = do
   putStrLn "hs-classifier at http://localhost:3000"

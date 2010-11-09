@@ -10,8 +10,6 @@ module Classifier
 
 import Control.Monad
 import Control.Concurrent.STM
-import Control.Parallel.Strategies
-import Control.Parallel
 -- import Data.Heap
 import Data.List (foldl', sortBy, sort)
 import qualified Data.Map as Hash
@@ -44,9 +42,6 @@ data Classifier a = Classifier {
   samples :: TVar (Hash.Map String [a])
 } -- Classifier holds Training Data
 
-pmap = (parMap rwhnf)
-elementwise f g (a, b) = (f a, g b)
-
 -- helper
 updateTVar :: TVar a -> (a -> a) -> STM ()
 updateTVar var f = readTVar var >>= (writeTVar var) . f
@@ -71,7 +66,6 @@ getSamples (Classifier _ t) = atomically $ readTVar t
 classifyWithClassifier :: Sample s => Classifier s -> s -> IO Results
 classifyWithClassifier c@(Classifier k t) unknown = do
   samples <- getSamples c
-  -- return $ sort $ toScores $ pmap (elementwise id mindist) $ Hash.toList $ samples where
   return $ (sort . toScores . Hash.toList . Hash.map mindist) samples where
     toScores = map (\(id, score) -> Score id score)
     mindist = (meanmin 2) . (map (\next -> distance unknown next))
