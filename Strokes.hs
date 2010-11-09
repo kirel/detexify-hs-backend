@@ -13,10 +13,10 @@ import Sim
 
 -- data types
 newtype Point = Point (Double, Double) deriving (Show, Eq, Ord)
+type Points = [Point]
+type Rect = (Point, Point)
 type Stroke = [Point]
 type Strokes = [Stroke]
-type Points = [Point]  
-type Rect = (Point, Point)
 
 for = flip map
 both f (a, b) = (f a, f b)

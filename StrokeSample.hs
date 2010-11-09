@@ -9,13 +9,11 @@ import DTW
 import Classifier
 
 data StrokeSample = StrokeSample {
-    strokes :: Strokes,
-    sidentifier :: Maybe String
+    strokes :: Strokes
   } deriving (Show)
 
-newStrokeSample :: Strokes -> Maybe String -> StrokeSample
-newStrokeSample s i = StrokeSample s i where
+newStrokeSample :: Strokes -> StrokeSample
+newStrokeSample s = StrokeSample s where
 
 instance Sample StrokeSample where
-  distance (StrokeSample a _) (StrokeSample b _) = gdtw manhattanDistance (concat a) (concat b)
-  identifier = sidentifier
+  distance (StrokeSample a) (StrokeSample b) = gdtw manhattanDistance (concat a) (concat b)

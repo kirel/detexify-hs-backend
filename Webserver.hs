@@ -13,6 +13,7 @@ import Control.Monad.Trans
 import Control.Monad.Reader
 
 import Data.ByteString.Lazy.UTF8 (fromString, toString)
+import Data.Maybe
 
 import Classifier
 import StrokeSample
@@ -75,7 +76,7 @@ classify c d =
   either
     (\e -> jsonerror e)
     (\strokes -> do
-      res <- liftIO $ classifyWithClassifier c (newStrokeSample (process strokes) Nothing)
+      res <- liftIO $ classifyWithClassifier c (newStrokeSample (process strokes))
       json res)
     (validate $ resultToEither $ decode $ d) -- comes out as Either String Strokes
 
@@ -83,7 +84,7 @@ train _ _ Nothing = jsonerror "no training without an id"
 train c d id = either
   (\e -> jsonerror e)
   (\strokes -> do
-    liftIO $ trainClassifier c (newStrokeSample (process strokes) id)
+    liftIO $ trainClassifier c (fromJust id) (newStrokeSample (process strokes))
     jsonmessage "Sample was successfully trained.")
   (validate $ resultToEither $ decode $ d)
   
