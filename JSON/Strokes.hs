@@ -1,22 +1,16 @@
+{-# LANGUAGE OverloadedStrings #-}
 module JSON.Strokes where
-  
-import Text.JSON
+
+import Data.Functor
+import Control.Applicative
+import Data.Aeson
 import Strokes
 
-instance JSON Point where
-  -- readJSON :: JSValue -> Result Point
-  readJSON (JSObject j) = case (rx,ry) of
-    (Ok x, Ok y) -> Ok (Point (x,y))
-    _ -> Error "Unable to read JSPoint"
-    where rx = valFromObj "x" j
-          ry = valFromObj "y" j
-  readJSON _ = Error "Unable to read JSPoint"
-  -- showJSON :: Point -> JSValue
-  showJSON (Point (x,y)) = showJSON $ toJSObject [("x",x),("y",y)]
+toPoint a b = Point (a,b)
 
--- main = do
---   let rp = (decode "[[{\"x\":1,\"y\":3}]]") :: Result Strokes
---   putStrLn $ show rp
---   case rp of
---     Ok p -> putStrLn $ encode $ p
---     Error e -> putStrLn e
+instance FromJSON Point where
+  parseJSON (Object v) = toPoint <$> v .: "x" <*> v .: "y"
+
+instance ToJSON Point where
+  toJSON (Point (x,y)) =
+    object [ "x" .= x, "y" .= y]

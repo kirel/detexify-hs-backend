@@ -1,40 +1,32 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
-
-import Hack.Handler.Happstack
-import qualified Hack.Contrib.Request as Request
-import qualified Hack.Contrib.Response as Response
-import Hack.Contrib.Middleware.UTF8Body
-
-import Network.Loli hiding(mime)
-import Network.Loli.Utils
-import Network.Loli.Type
 
 import Control.Monad.Trans
 import Control.Monad.Reader
 
-import Data.ByteString.Lazy.UTF8 (fromString, toString)
 import Data.Maybe
 
 import Classifier
 import StrokeSample
 import Strokes
-import Text.JSON
+import Data.Aeson (toJSON, object, eitherDecode)
 import JSON.Strokes
 import JSON.Results
 
+import Network.HTTP.Types (badRequest400)
+
+
+import Web.Scotty
+
 -- import Data.List(sortBy)
+
+port = 3000
 
 cK = 50
 classifier = newClassifier cK
 
--- ord :: Stroke -> Stroke -> Ordering
--- ord s t = compare ((angle.last) s) ((angle.last) t) where
---   angle (Point (x,y)) = atan ((1-y)/x)
--- 
--- sort = sortBy ord
-
 alpha = 2*pi*15/360
-  
+
 sanitize :: Strokes -> Strokes
 sanitize = (map (dominant alpha
                 .unduplicate
@@ -53,59 +45,50 @@ validate (Left s) = Left s
 validate (Right s) | ((not.null) s) && (all (not.null) s) = Right s
 validate _ = Left "Illegal stroke."
 
--- in/out
-
-status s = update $ Response.set_status s
-mime m = update $ Response.set_content_type m
-body b = update $ Response.set_body (fromString b)
-
-reqBody = do
-  env <- ask
-  return $ toString $ Request.body env
-
-json :: JSON j => j -> AppUnit
-json = \d -> mime "application/json" >> (body . encode) d
+jsonerror :: String -> ActionM ()
 jsonerror e = do
-  status 400
-  json $ toJSObject [("error", e)]
-jsonmessage m = json $ toJSObject [("message", m)]
+  status Network.HTTP.Types.badRequest400
+  json $ object [("error", toJSON e)]
 
-serverinfo = json $ toJSObject [("server", "Nöt Betty :("), ("version", "0.0.1")]
+jsonmessage :: String -> ActionM ()
+jsonmessage m = json $ object [("message", toJSON m)]
 
+classify :: Classifier StrokeSample -> Either String Strokes -> ActionM ()
 classify c d =
   either
-    (\e -> jsonerror e)
+    (\e -> do
+      jsonerror e)
     (\strokes -> do
       res <- liftIO $ classifyWithClassifier c (newStrokeSample (process strokes))
       json res)
-    (validate $ resultToEither $ decode $ d) -- comes out as Either String Strokes
+    d -- comes out as Either String Strokes
 
-train _ _ Nothing = jsonerror "no training without an id"
+train :: Classifier StrokeSample -> Either String Strokes -> String -> ActionM ()
 train c d id = either
   (\e -> jsonerror e)
   (\strokes -> do
     let processed = (process strokes)
     liftIO $ print $ show processed -- FIXME workaround for strict evaluation
-    liftIO $ trainClassifier c (fromJust id) (newStrokeSample processed)
+    liftIO $ trainClassifier c id (newStrokeSample processed)
     jsonmessage "Sample was successfully trained.")
-  ((validate.resultToEither.decode) d)
-  
+  d
+
 main = do
   putStrLn "hs-classifier at http://localhost:3000"
-
   c <- classifier
+  scotty port $ do
 
-  run . loli $ do
-    middleware utf8_body
-    
-    get "/" $ do
-      serverinfo
-    
-    post "/classify" $ do
-      d <- reqBody
-      classify c d
-    
-    post "/train/:id" $ do
-      id <- liftM (Prelude.lookup "id") captures
-      d <- reqBody
-      train c d id
+    get (capture "/") $ do
+      json $ object [("server", "Nöt Betty :("), ("version", "0.0.2")]
+
+    post (capture "/classify") $ do
+      d <- body
+      let eitherJson = validate $ eitherDecode $ d
+      classify c eitherJson
+
+    post (capture "/train/:id") $ do
+      id <- param "id"
+      d <- body
+      jsonerror "fu"
+      let eitherJson = validate $ eitherDecode $ d
+      train c eitherJson id
