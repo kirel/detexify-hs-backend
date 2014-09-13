@@ -2,14 +2,13 @@ Detexify Backend Server implemented in Haskell
 ---
 REQUIREMENTS
 Haskell Platform
-Ruby + rake
-$ cabal install hack-handler-happstack loli
+    $ cabal install --only-dependencies
 
 COMPILE
-$ rake
+    $ cabal build
 
 RUN
-$ ./Webserver
+    $ dist/build/detexify-hs-backend/detexify-hs-backend
 will run the webserver on port 3000
 
 Now it only needs to be trained.
