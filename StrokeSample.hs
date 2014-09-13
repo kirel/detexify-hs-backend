@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module StrokeSample
   (
   newStrokeSample,
@@ -7,10 +8,11 @@ module StrokeSample
 import Strokes
 import DTW
 import Classifier
+import GHC.Generics
 
 data StrokeSample = StrokeSample {
     strokes :: Strokes
-  } deriving (Show)
+  } deriving (Show, Generic)
 
 newStrokeSample :: Strokes -> StrokeSample
 newStrokeSample s = StrokeSample s where

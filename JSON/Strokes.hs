@@ -5,6 +5,7 @@ import Data.Functor
 import Control.Applicative
 import Data.Aeson
 import Strokes
+import StrokeSample
 
 toPoint a b = Point (a,b)
 
@@ -14,3 +15,6 @@ instance FromJSON Point where
 instance ToJSON Point where
   toJSON (Point (x,y)) =
     object [ "x" .= x, "y" .= y]
+
+instance FromJSON StrokeSample
+instance ToJSON StrokeSample

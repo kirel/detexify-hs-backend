@@ -1,6 +1,7 @@
 module Classifier
   (
   Classifier,
+  samples,
   newClassifier,
   trainClassifier,
   classifyWithClassifier,

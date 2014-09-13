@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Strokes
   (
   Point(..), Stroke, Strokes, Points,
@@ -10,9 +11,10 @@ module Strokes
 
 import Data.List (sort, sortBy, foldl')
 import Sim
+import GHC.Generics
 
 -- data types
-newtype Point = Point (Double, Double) deriving (Show, Eq, Ord)
+newtype Point = Point (Double, Double) deriving (Show, Eq, Ord, Generic)
 type Points = [Point]
 type Rect = (Point, Point)
 type Stroke = [Point]
