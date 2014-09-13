@@ -12,7 +12,7 @@ maintainer:          danishkirel@gmail.com
 -- copyright:           
 -- category:            
 build-type:          Simple
-extra-source-files:  README
+extra-source-files:  README.md
 cabal-version:       >=1.10
 
 executable detexify-hs-backend
