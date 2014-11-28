@@ -16,6 +16,7 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 executable detexify-hs-backend
+  hs-source-dirs: src
   main-is:             Webserver.hs
   -- other-modules:       
   -- other-extensions:    
