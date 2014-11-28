@@ -1,0 +1,21 @@
+---
+- hosts: all
+  vars_prompt:
+    librato_password: Librato password?
+  vars:
+    librato_user: danishkirel@gmail.com
+  tasks:
+    - name: Install CollectD
+      apt: pkg=collectd state=installed
+      tags: collectd
+
+    - name: Configure CollectD
+      template: src=collectd.conf.j2 dest=/etc/collectd/collectd.conf
+      notify:
+        - restart collectd
+      tags: collectd
+
+  handlers:
+    - name: restart collectd
+      service: name=collectd state=restarted
+
