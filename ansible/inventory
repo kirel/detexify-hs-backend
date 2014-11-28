@@ -1,0 +1,2 @@
+[docker]
+128.199.33.92 ansible_ssh_user=root
