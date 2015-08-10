@@ -23,3 +23,7 @@ will run the webserver on port 3000. It will load training data from snapshot.js
 ## Deploy
 
     ansible-playbook ansible/deploy.yml -i ansible/inventory
+
+## License
+
+Copyright (c) 2009 Daniel Kirsch, released under the MIT license, see MIT-LICENSE
