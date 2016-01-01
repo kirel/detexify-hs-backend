@@ -2,8 +2,8 @@
   roles:
     - { role: kamaln7.swapfile, swapfile_size: 1GB, swapfile_swappiness: 10 }
   tasks:
-    - apt: name=python-pip
-    - pip: name=docker-py
+    - apt: name=python-pip update_cache=yes
+    - pip: name=docker-py state=present version=1.2.3
     - name: run detexify backend
       docker: image=kirel/detexify-hs-backend
               ports=3000:3000
