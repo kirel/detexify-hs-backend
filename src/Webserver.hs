@@ -44,9 +44,9 @@ process :: Strokes -> Strokes
 process = sanitize
 
 -- validate there are no empty strokes
-validate :: Either String Strokes -> Either String Strokes
+validate :: Either String StrokesRequest -> Either String StrokesRequest
 validate (Left s) = Left s
-validate (Right s) | ((not.null) s) && (all (not.null) s) = Right s
+validate (Right (StrokesRequest s)) | ((not.null) s) && (all (not.null) s) = Right (StrokesRequest s)
 validate _ = Left "Illegal stroke."
 
 jsonerror :: String -> ActionM ()
@@ -57,21 +57,21 @@ jsonerror e = do
 jsonmessage :: String -> ActionM ()
 jsonmessage m = json $ JSON.object [("message", JSON.toJSON m)]
 
-classify :: Classifier StrokeSample -> Either String Strokes -> ActionM ()
+classify :: Classifier StrokeSample -> Either String StrokesRequest -> ActionM ()
 classify c d =
   either
     (\e -> do
       jsonerror e)
-    (\strokes -> do
-      res <- liftIO $ classifyWithClassifier c (newStrokeSample (process strokes))
-      json res)
+    (\strokesRequest -> do
+      res <- liftIO $ classifyWithClassifier c (newStrokeSample (process (strokes strokesRequest)))
+      json $ ResultsResponse $ res)
     d -- comes out as Either String Strokes
 
-train :: Classifier StrokeSample -> Either String Strokes -> String -> ActionM ()
+train :: Classifier StrokeSample -> Either String StrokesRequest -> String -> ActionM ()
 train c d id = either
   (\e -> jsonerror e)
-  (\strokes -> do
-    let processed = (process strokes)
+  (\strokeRequest -> do
+    let processed = process $ strokes $ strokeRequest
     liftIO $ print $ show processed -- FIXME workaround for strict evaluation
     liftIO $ trainClassifier c id (newStrokeSample processed)
     jsonmessage "Sample was successfully trained.")
