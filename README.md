@@ -19,6 +19,8 @@ Or with docker:
 
     $ docker build -t kirel/detexify-hs-backend . && docker run --rm --name detexify -p 3000:3000 -it kirel/detexify-hs-backend
 
+    $ docker-machine ssh default -f -N -L 3000:localhost:3000
+
 ## Test
 
     $ curl -H "Content-Type: application/json" -X POST -d '{"strokes":[[{"x":0, "y":0}]]}' "http://$(docker-machine ip default):3000/classify"
