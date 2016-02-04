@@ -3,8 +3,10 @@ module Classifier
   Classifier,
   samples,
   newClassifier,
+  newClassifierWithSnapshot,
   trainClassifier,
   classifyWithClassifier,
+  getSamples,
   Sample(..),
   Score(..),
   Results,
@@ -59,6 +61,9 @@ insertWithLimit limit identifier sample m = Hash.alter alterLim identifier m whe
 -- classifier interface
 newClassifier :: Int -> IO (Classifier s)
 newClassifier k = atomically $ liftM (Classifier k) (newTVar Hash.empty)
+
+newClassifierWithSnapshot :: Int -> Hash.Map String [s] -> IO (Classifier s)
+newClassifierWithSnapshot k s = atomically $ liftM (Classifier k) (newTVar s)
 
 trainClassifier :: Sample s => Classifier s -> String -> s -> IO ()
 trainClassifier (Classifier k t) identifier sample = atomically $ updateTVar t (insertWithLimit k identifier sample)
