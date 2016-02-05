@@ -10,9 +10,7 @@ import JSON.Results
 import JSON.Strokes
 import Control.Concurrent.STM
 import Control.Monad
-import Control.Monad.Trans
-import Data.Maybe
-import Control.Monad.Trans.Maybe
+import Data.IORef
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.MessagePack.Object
@@ -38,11 +36,14 @@ instance MessagePack Point where
 --
 
 cK = 50
-snapshotJsonFile = "snapshot.json"
+snapshotJsonFileRef :: IORef String
+snapshotJsonFileRef = unsafePerformIO (newIORef "snapshot.json")
+{-# NOINLINE snapshotJsonFileRef #-}
 
 load :: IO (Classifier StrokeSample)
 load = do
-  -- getCurrentDirectory >>= putStrLn
+  snapshotJsonFile <- readIORef snapshotJsonFileRef
+  putStrLn snapshotJsonFile
   jsonString <- BL.readFile snapshotJsonFile
   case (JSON.decode jsonString) of
     Nothing -> error "could not read snapshot"
@@ -51,8 +52,8 @@ load = do
       -- putStrLn $ show $ length s
 
 classifier :: Classifier StrokeSample
-{-# NOINLINE classifier #-}
 classifier = unsafePerformIO load
+{-# NOINLINE classifier #-}
 
 alpha = 2*pi*15/360
 
@@ -93,6 +94,9 @@ classify_export cstring = do
   returncstring <- newCString $ BL.unpack $ bstring
   return returncstring
 
-foreign export ccall init_detexify :: IO ()
-init_detexify :: IO ()
-init_detexify = getSamples classifier >> return ()
+foreign export ccall init_detexify :: CString -> IO ()
+init_detexify :: CString -> IO ()
+init_detexify newJsonPathCString = do
+  newPath <- peekCString newJsonPathCString
+  writeIORef snapshotJsonFileRef newPath
+  getSamples classifier >> return ()
