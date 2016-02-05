@@ -6,7 +6,7 @@ version:             0.1.0.0
 -- synopsis:            
 -- description:         
 -- license:             
-license-file:        LICENSE
+license-file:        MIT-LICENSE
 author:              Daniel Kirsch
 maintainer:          danishkirel@gmail.com
 -- copyright:           
@@ -20,6 +20,36 @@ executable detexify-hs-backend
   main-is:             Webserver.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.7 && <4.8, containers >=0.5 && <0.6, array >=0.5 && <0.6, scotty ==0.9.0, mtl ==2.1.3.1, stm ==2.4.3, http-types ==0.8.5, aeson ==0.8.0.0, bytestring ==0.10.4.0
+  build-depends:
+    base ==4.8.2.0
+    , containers >=0.5 && <0.6
+    , array >=0.5 && <0.6
+    , scotty ==0.11.0
+    , mtl ==2.2.1
+    , stm ==2.4.4, http-types ==0.8.6
+    , aeson ==0.8.0.2, bytestring ==0.10.6.0
   -- hs-source-dirs:      
   default-language:    Haskell2010
+
+executable libdetexify.so
+  default-language:    Haskell2010
+  hs-source-dirs: src
+  --C-Sources: not/even/rain.c, such/small/hands
+  main-is: DetexifyLib.hs
+  build-depends:
+    base ==4.8.2.0
+    , containers >=0.5 && <0.6
+    , array >=0.5 && <0.6
+    , mtl ==2.2.1
+    , stm ==2.4.4, http-types ==0.8.6
+    , aeson ==0.8.0.2, bytestring ==0.10.6.0
+    , msgpack ==1.0.0
+    , vector ==0.11.0.0
+    , directory ==1.2.2.0
+    , transformers ==0.4.2.0
+    , call-haskell-from-anything ==1.0.1.0
+  ghc-options:
+    -no-hs-main -fPIC -shared -dynamic
+  extra-libraries:
+    HSrts-ghc7.10.3
+    ffi

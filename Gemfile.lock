@@ -1,0 +1,15 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ffi (1.9.10)
+    msgpack (0.7.4)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  ffi
+  msgpack
+
+BUNDLED WITH
+   1.10.6
