@@ -45,7 +45,7 @@ executable libdetexify.so
     , aeson ==0.8.0.2, bytestring ==0.10.6.0
     , directory ==1.2.2.0
   ghc-options:
-    -no-hs-main -fPIC -shared -dynamic
+    -no-hs-main -threaded -fPIC -O2 -shared -dynamic
   extra-libraries:
-    HSrts-ghc7.10.3
+    HSrts_thr-ghc7.10.3
     ffi
