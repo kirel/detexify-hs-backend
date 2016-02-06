@@ -13,25 +13,11 @@ import Control.Monad
 import Data.IORef
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy.Char8 as BL
-import Data.MessagePack.Object
-import qualified Data.Vector as V
 
 import Foreign.C
--- import FFI.Anything.TypeUncurry.Msgpack
 
 import System.IO.Unsafe
 import System.Directory
-
---
-
-instance MessagePack Score where
-  toObject (Score id score) = toObject [toObject (id :: String), toObject (score :: Double)]
-  fromObject obj = Nothing -- don't care
-
-instance MessagePack Point where
-  toObject (Point (x,y)) = ObjectNil -- don't care
-  fromObject (ObjectArray xs) = Just $ Point (1.0,1.0)
-  fromObject _ = Nothing
 
 --
 

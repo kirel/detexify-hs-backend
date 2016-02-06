@@ -34,7 +34,7 @@ executable detexify-hs-backend
 executable libdetexify.so
   default-language:    Haskell2010
   hs-source-dirs: src
-  --C-Sources: not/even/rain.c, such/small/hands
+  C-Sources: src/DetexifyLib_wrapper.c
   main-is: DetexifyLib.hs
   build-depends:
     base ==4.8.2.0
@@ -43,10 +43,7 @@ executable libdetexify.so
     , mtl ==2.2.1
     , stm ==2.4.4, http-types ==0.8.6
     , aeson ==0.8.0.2, bytestring ==0.10.6.0
-    , msgpack ==1.0.0
-    , vector ==0.11.0.0
     , directory ==1.2.2.0
-    , transformers ==0.4.2.0
     , call-haskell-from-anything ==1.0.1.0
   ghc-options:
     -no-hs-main -fPIC -shared -dynamic
